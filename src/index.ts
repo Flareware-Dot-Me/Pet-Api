@@ -1,24 +1,24 @@
 import express from 'express';
-const app = express();
-const port = 4001;
-import './bots/discord.js';
-import { client } from './bots/discord.js';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-// Use CJS build to avoid __dirname issues in ESM
+import { client } from './bots/discord.ts';
 import petPetGif from '@someaspy/pet-pet-gif';
+import dotenv from 'dotenv';
+
+dotenv.config({ quiet: true });
+
+const app = express();
+const port = process.env.PORT || 4001;
 
 app.get('/', (req, res) => {
     res.send('Welcome to the Pet Api Website!');
 });
 
 app.get('/bot', async (req, res) => {
-    res.send(`Bot is logged in as ${client.user.tag}`);
+    res.send(`Bot is logged in as ${client.user?.tag}`);
 });
 
 app.get('/discord/:id.gif', async (req, res) => {
     const userId = req.params.id;
-    const delay = req.query.delay ? parseInt(req.query.delay) : 20;
+    const delay = typeof req.query.delay === 'string' ? parseInt(req.query.delay) : 20;
     const circle = req.query.circle === 'true';
     try {
         const user = await client.users.fetch(userId);
@@ -41,5 +41,5 @@ app.get('/discord/:id.gif', async (req, res) => {
 
 
 app.listen(port, () => {
-    console.log(`Pet Api Website listening at https://localhost:${port}`)
+    console.log(`Pet Api Website listening at http://localhost:${port}`)
 })

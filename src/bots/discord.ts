@@ -1,12 +1,9 @@
 import { REST, Routes, Client, Events, GatewayIntentBits, InteractionContextType, ApplicationIntegrationType, SlashCommandBuilder, ActivityType } from 'discord.js';
-import dotenv from 'dotenv';
 import petPetGif from '@someaspy/pet-pet-gif';
 import sharp from 'sharp';
 
-dotenv.config({ quiet: true });
-
-const TOKEN = process.env.DISCORD_BOT_TOKEN;
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const TOKEN = process.env.DISCORD_BOT_TOKEN ?? '';
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? '';
 
 
 const commands = [
@@ -77,8 +74,8 @@ client.on(Events.InteractionCreate, async interaction => {
 		}
 
 		// Check if a user was provided
-		if (interaction.options.getUser('target')) {
-			const target = interaction.options.getUser('target');
+		const target = interaction.options.getUser('target');
+		if (target) {
 			console.log(`[Discord] ${interaction.user.tag} is petting ${target.tag}`);
 			await interaction.reply(process.env.WEBSITE_URL + 'discord/' + target.id + ".gif" + urlOptions);
 		} else {
@@ -90,7 +87,13 @@ client.on(Events.InteractionCreate, async interaction => {
 
 	if (interaction.commandName === 'pet-image')
 	{
-		const url = interaction.options.getString('url');
+		// Defer reply because image fetching/processing can take >3s
+		try {
+			await interaction.deferReply();
+		} catch (err) {
+			console.error('Failed to defer reply:', err);
+		}
+		const url = interaction.options.getString('url')!;
 		console.log(`[Discord] ${interaction.user.tag} is petting an image: ${url}`);
 
 		// Fetch the image and convert it to a PNG buffer to ensure canvas supports it
@@ -128,15 +131,20 @@ client.on(Events.InteractionCreate, async interaction => {
 			);
 
 			// Reply with the petted image as an attachment
-			await interaction.reply({
-				files: [{
-					attachment: pettedImageBuffer,
-					name: 'petted.gif'
-				}]
-			});
+			try {
+				await interaction.editReply({
+					files: [{
+						attachment: pettedImageBuffer,
+						name: 'petted.gif'
+					}]
+				});
+			} catch (err) {
+				console.error('Failed to send petted image reply:', err);
+				try { await interaction.followUp({ content: 'Error sending the petted image.' }); } catch {};
+			}
 		} catch (error) {
 			console.error(error);
-			await interaction.reply({ content: 'Error processing the image.' });
+			try { await interaction.editReply({ content: 'Error processing the image.' }); } catch { try { await interaction.followUp({ content: 'Error processing the image.' }); } catch {} }
 		}
 		return;
 	}
